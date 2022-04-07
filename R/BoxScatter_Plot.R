@@ -3,7 +3,7 @@
 ############################
 
 #' Function to make Box-Scatter plots.
-#' 
+#'
 #' This function will make a Boxplot, using a DEseq object.
 #' It will show the data points on top with a small deviation (jitter) for a better visualization.
 #'
@@ -25,6 +25,7 @@
 #' @param title_size Font of the title and axis names. Default: c(axis = 20, fig = 24).
 #' @param label_size Font of the labels (x-axis) and numbers (y-axis). Default: c(x = 20, y = 16).
 #' @param legend_size Font of the title and elements of the legend. Default: c(title = 14, elements = 12).
+#' @export
 
 BoxScatter_Plot <- function (object = NULL, variables = c(fill = "VarFill", shape = "VarShape"),
                              genename = NULL, symbol = NULL, labels = c("N", "P", "R", "M"),
@@ -37,15 +38,15 @@ BoxScatter_Plot <- function (object = NULL, variables = c(fill = "VarFill", shap
   # Extracting the vector of counts for that gene
   gene_counts <- counts(object, normalized = TRUE)[genename, ]
   log2_gc <- log2(gene_counts)
-  
+
   # Making a dataframe for the plot
   df.box <- data.frame(object@colData[, c("id", "sample_type", variables)], log2_gc)
-  
+
   # Re-ordering sample_type for the plot
   df.box$sample_type <- factor(df.box$sample_type,
                                levels = categories,
                                labels = labels)
-  
+
   # Plot
   p.bs <- ggplot(df.box, aes(x = sample_type, y = log2_gc)) +
     theme_bw() + geom_boxplot(width = 0.6, fill = "gray90") +
@@ -58,26 +59,26 @@ BoxScatter_Plot <- function (object = NULL, variables = c(fill = "VarFill", shap
           axis.text.y = element_text(size = label_size["y"]),
           legend.title = element_text(size = legend_size["title"]),
           legend.text=element_text(size = legend_size["elements"]))
-  
+
   if (length(variables) == 1) {
     p.bs <- p.bs + geom_point(data = df.box, aes_string(fill = variables["fill"]), shape = 21,
                               size = markersize, alpha = alpha, color = "black",
                               position = position_jitter(width = jitter))
-    
+
   } else if (length(variables) == 2) {
     p.bs <- p.bs + geom_point(data = df.box, aes_string(fill = variables["fill"], shape = variables["shape"]),
                               size = markersize, alpha = alpha, color = "black",
                               position = position_jitter(width = jitter)) +
       scale_shape_manual(name = variables["shape"], values = shapes)
-    
+
   } else { return("Up to two variables allowed") }
-  
+
   p.bs <- p.bs + scale_fill_manual(name = variables[1], values = colors,
                                    guide = guide_legend(override.aes = aes(shape = 21, size = 7)))
-  
+
   if (save == T) {
     ggsave(paste0(symbol,".jpg"), plot = p.bs, width = width, height = height, dpi = dpi)
-    
+
   } else { return(p.bs) }
-  
+
 }
