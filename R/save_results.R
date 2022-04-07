@@ -1,0 +1,33 @@
+#########################
+# Function save_results #
+#########################
+
+#' This function will save the results of a Differential Expression analysis
+#' 
+#' This function uses as input:
+#' - A table with all genes
+#' - A table including only the over-expressed genes
+#' - A table including only the under-expressed genes
+#' 
+#' @param df A dataframe with the results of a Differential Expression analysis.
+#' @param name The name to be used to save the table.
+#' @param l2fc The cut-off of Log2(Fold Change) for the over- and under-expressed tables. Default = 0.
+
+save_results <- function(df, name, l2fc = 0){
+  
+  # Saving all genes:
+  write.xlsx(df, colNames = T, rowNames = F, append = F,
+             file = paste0(name, "_full.xlsx"), overwrite = T)
+  
+  #Saving over-expressed genes:
+  df.sig.fold_over <- subset(df, ((padj < cutoff_alpha) & !is.na(padj)) &
+                               log2FoldChange >= l2fc)
+  write.xlsx(df.sig.fold_over, colNames = T, rowNames = F, append = F,
+             file = paste0(name, "_overexp.xlsx"), overwrite = T)
+  
+  #Saving under-expressed genes:
+  df.sig.fold_under <- subset(df, ((padj < cutoff_alpha) & !is.na(padj)) &
+                                log2FoldChange <= -l2fc)
+  write.xlsx(df.sig.fold_under, colNames = T, rowNames = F, append = F,
+             file = paste0(name, "_underexp.xlsx"), overwrite = T)
+}

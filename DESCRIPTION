@@ -1,0 +1,11 @@
+Package: drfun
+Title: Functions To Help With RNAseq Data Analysis
+Version: 1.0.0.0000
+Authors@R: 
+    person("David", "Requena", , "drequena@rockefeller.edu", role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0002-5968-1133"))
+Description: A set of functions to make plots (PCA, tSNE, Box + Scatter), get annotations and annotate gene count tables, calculate TPMs, and filter and save differential expression analysis results.
+License: use_mit_license()
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.1.2
