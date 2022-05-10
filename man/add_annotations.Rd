@@ -7,7 +7,7 @@
 add_annotations(object, reference = geneID.details, variables = NULL)
 }
 \arguments{
-\item{object}{A table of gene counts (rows: genes, columns:samples, rownames: gene IDs).}
+\item{object}{A table of gene counts (rows: genes, columns:samples, rownames: ENSEMBL gene IDs).}
 
 \item{reference}{A reference table with the annotations. Default: geneID.details.}
 

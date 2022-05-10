@@ -4,7 +4,7 @@
 
 #' A function to add annotations to a table of gene counts.
 #'
-#' @param object A table of gene counts (rows: genes, columns:samples, rownames: gene IDs).
+#' @param object A table of gene counts (rows: genes, columns:samples, rownames: ENSEMBL gene IDs).
 #' @param reference A reference table with the annotations. Default: geneID.details.
 #' @param variables Annotations (columns) from the reference table to add, i.e. gene symbol, gene_length, description.
 #' @export
