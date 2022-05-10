@@ -36,12 +36,12 @@ nice_tSNE <- function(object, seed = 0, perplexity = 3, max_iterations = 10000, 
   set.seed(seed) # set the seed so the results can be reproducible
 
   # Calculate the euclidean distances between samples
-  sampleDists <- dist(t(assay(transf_object)))
+  sampleDists <- dist(t(assay(object)))
 
   samples.tsne <- tsne(sampleDists, perplexity = perplexity, max_iter = max_iterations, epoch = 1000)
 
   df.tsne <- cbind(data.frame(samples.tsne),
-                   colData(transf_object)[, variables, drop = FALSE])
+                   colData(object)[, variables, drop = FALSE])
 
   if (length(variables) == 2) {
 
@@ -67,7 +67,7 @@ nice_tSNE <- function(object, seed = 0, perplexity = 3, max_iterations = 10000, 
   if (is.null(labels) == FALSE) {
 
     # Add the column of labels to the data frame
-    df.tsne <- data.frame(df.tsne, colData(transf_object)[, labels[1], drop = FALSE])
+    df.tsne <- data.frame(df.tsne, colData(object)[, labels[1], drop = FALSE])
 
     # Add the labels to the plot
     p.tsne <- p.tsne +
@@ -79,7 +79,7 @@ nice_tSNE <- function(object, seed = 0, perplexity = 3, max_iterations = 10000, 
     require("ggrepel")
 
     # Add the column of name tags to the data frame
-    df.tsne <- data.frame(df.tsne, colData(transf_object)[, name_tags[1], drop = FALSE])
+    df.tsne <- data.frame(df.tsne, colData(object)[, name_tags[1], drop = FALSE])
 
     # Add the name tags to the plot
     p.tsne <- p.tsne +
