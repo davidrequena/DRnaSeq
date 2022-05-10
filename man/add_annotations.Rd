@@ -4,14 +4,21 @@
 \alias{add_annotations}
 \title{A function to add annotations to a table of gene counts.}
 \usage{
-add_annotations(object, reference = geneID.details, variables = NULL)
+add_annotations(
+  object,
+  reference = geneID.details,
+  key = "geneID",
+  variables = NULL
+)
 }
 \arguments{
 \item{object}{A table of gene counts (rows: genes, columns:samples).}
 
 \item{reference}{A reference table with the annotations. Default: geneID.details.}
 
-\item{variables}{Annotations (columns) from the reference to add, i.e. (gene symbol, gene_length, description).}
+\item{key}{The variable name (column) in common between the object and the reference, which contains the indentifiers. Default: "geneID".}
+
+\item{variables}{Annotations (columns) from the reference table to add, i.e. gene symbol, gene_length, description.}
 }
 \description{
 A function to add annotations to a table of gene counts.
