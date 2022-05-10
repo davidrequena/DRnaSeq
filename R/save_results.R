@@ -24,13 +24,13 @@ save_results <- function(df, name, l2fc = 0){
              file = paste0(name, "_full.xlsx"), overwrite = T)
 
   #Saving over-expressed genes:
-  df.sig.fold_over <- subset(df, ((padj < cutoff_alpha) & !is.na(padj)) &
+  df.sig.fold_over <- subset(df, ((FDR < cutoff_alpha) & !is.na(FDR)) &
                                log2FoldChange >= l2fc)
   write.xlsx(df.sig.fold_over, colNames = T, rowNames = F, append = F,
              file = paste0(name, "_overexp.xlsx"), overwrite = T)
 
   #Saving under-expressed genes:
-  df.sig.fold_under <- subset(df, ((padj < cutoff_alpha) & !is.na(padj)) &
+  df.sig.fold_under <- subset(df, ((FDR < cutoff_alpha) & !is.na(FDR)) &
                                 log2FoldChange <= -l2fc)
   write.xlsx(df.sig.fold_under, colNames = T, rowNames = F, append = F,
              file = paste0(name, "_underexp.xlsx"), overwrite = T)
