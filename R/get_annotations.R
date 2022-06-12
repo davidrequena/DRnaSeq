@@ -47,7 +47,7 @@ get_annotations <- function(ensembl_ids, mode = "genes", version = "", format = 
                      values = df$transcriptID,
                      mart = ensembl)
   
-    idx <- match(df$transcriptIDs, genemap$ensembl_transcript_id_version)
+    idx <- match(df$transcriptID, genemap$ensembl_transcript_id_version)
   
     df$geneID <- genemap$ensembl_gene_id[idx]
     df$symbol <- genemap$hgnc_symbol[idx]
@@ -70,7 +70,7 @@ get_annotations <- function(ensembl_ids, mode = "genes", version = "", format = 
                      values = df$geneIDs,
                      mart = ensembl)
     
-    idx <- match(df$geneIDs, genemap$ensembl_gene_id)
+    idx <- match(df$geneID, genemap$ensembl_gene_id)
     
     df$symbol <- genemap$hgnc_symbol[idx]
     df$gene_start <- genemap$start_position[idx]
