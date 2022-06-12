@@ -73,8 +73,6 @@ get_annotations <- function(ensembl_ids, mode = "genes", version = "", format = 
     idx <- match(df$geneID, genemap$ensembl_gene_id)
     
     df$symbol <- genemap$hgnc_symbol[idx]
-    df$gene_start <- genemap$start_position[idx]
-    df$gene_end <- genemap$end_position[idx]
     df$description <- genemap$description[idx]
     df$gene_length <- df$gene_end - df$gene_start + 1
     
