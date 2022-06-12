@@ -4,12 +4,12 @@
 \alias{get_annotations}
 \title{This function annotates a column of transcripts IDs (ENSEMBL) with information of the genes to which they belong.}
 \usage{
-get_annotations(tx_ensembl_ids, version = "103", format = "csv")
+get_annotations(tx_ensembl_ids, version = "", format = "csv")
 }
 \arguments{
 \item{tx_ensembl_ids}{The column of transcripts to be used as input.}
 
-\item{version}{This function can use the version 103 or the current version of the Biomart. Default = 103.}
+\item{version}{This function can use the version 103 or the current version of the Biomart. Default = Current.}
 
 \item{format}{The output will be a table named tx2gene in .csv or .xlsx formats. Default = csv.}
 }
