@@ -67,7 +67,7 @@ get_annotations <- function(ensembl_ids, mode = "genes", version = "", format = 
                                     "start_position", "end_position",
                                     "description"),
                      filters = "ensembl_gene_id",
-                     values = df$geneIDs,
+                     values = df$geneID,
                      mart = ensembl)
     
     idx <- match(df$geneID, genemap$ensembl_gene_id)
