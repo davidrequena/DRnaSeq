@@ -2,12 +2,15 @@
 % Please edit documentation in R/get_annotations.R
 \name{get_annotations}
 \alias{get_annotations}
-\title{This function annotates a column of transcripts IDs (ENSEMBL) with information of the genes to which they belong.}
+\title{This function annotates a column of transcripts or gene IDs (ENSEMBL) with information of the Biomart.
+If transcript IDs are provided, they are also annotated with information of the genes to which they belong.}
 \usage{
-get_annotations(tx_ensembl_ids, version = "", format = "csv")
+get_annotations(ensembl_ids, mode = "genes", version = "", format = "csv")
 }
 \arguments{
-\item{tx_ensembl_ids}{The column of transcripts to be used as input.}
+\item{ensembl_ids}{The column of transcripts to be used as input.}
+
+\item{mode}{To specify the IDs provided, between "transcripts" or "genes". Default = genes.}
 
 \item{version}{This function can use the version 103 or the current version of the Biomart. Default = Current.}
 
