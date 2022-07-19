@@ -19,9 +19,7 @@ get_annotations(ensembl_ids, mode = "genes", version = "", format = "csv")
 \description{
 The Gene information added include:
 \itemize{
-\item ENSEMBL ID
-\item HGNC Symbol and description
-\item Start and End position
-\item Gene length
+\item Gene ENSEMBL ID, HGNC Symbol, Description, Biotype and Chromosome.
+\item Gene start, end and length
 }
 }

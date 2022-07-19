@@ -6,10 +6,8 @@
 #' If transcript IDs are provided, they are also annotated with information of the genes to which they belong.
 #' 
 #' The Gene information added include:
-#' - ENSEMBL ID
-#' - HGNC Symbol and description
-#' - Start and End position
-#' - Gene length
+#' - Gene ENSEMBL ID, HGNC Symbol, Description, Biotype and Chromosome.
+#' - Gene start, end and length
 #'
 #' @param ensembl_ids The column of transcripts to be used as input.
 #' @param mode To specify the IDs provided, between "transcripts" or "genes". Default = genes.
@@ -18,67 +16,60 @@
 #' @export
 
 get_annotations <- function(ensembl_ids, mode = "genes", version = "", format = "csv") {
-
+  
   require("biomaRt")
   require("ensembldb")
   
   if(version == "103"){
     ensembl = useMart("ENSEMBL_MART_ENSEMBL",
                       dataset = "hsapiens_gene_ensembl",
-                      host = "feb2021.archive.ensembl.org")
+                      host = "https://feb2021.archive.ensembl.org")
   } else {
     ensembl = useMart("ENSEMBL_MART_ENSEMBL",
                       dataset = "hsapiens_gene_ensembl",
-                      host = "useast.ensembl.org")
+                      host = "https://useast.ensembl.org")
   }
   
+  annotations <- c("ensembl_gene_id", "hgnc_symbol", "gene_biotype",
+                   "chromosome_name", "start_position", "end_position",
+                   "description")
+  
+  new_names <- c("geneID", "symbol", "biotype", "chromosome",
+                 "gene_start", "gene_end", "description")
+  
+  # There are more annotations available in the biomaRt, check listAttributes(mart = ensembl)
+  # The terms "go_id" and "name_1006" can be added in a future release.
+  
   if(mode == "transcripts"){
-    
+    ensembl_ids <- rownames(txi$counts)
     df <- data.frame(transcriptID = ensembl_ids)
     filename <- "tx2gene"
-  
-    # There are more annotations available in the biomaRt, check listAttributes(mart = ensembl)
-    genemap <- getBM(attributes = c("ensembl_transcript_id_version",
-                                    "ensembl_gene_id",
-                                    "hgnc_symbol",
-                                    "start_position", "end_position",
-                                    "description"),
+    
+    genemap <- getBM(attributes = c("ensembl_transcript_id_version", annotations),
                      filters = "ensembl_transcript_id_version",
                      values = df$transcriptID,
                      mart = ensembl)
-  
-    idx <- match(df$transcriptID, genemap$ensembl_transcript_id_version)
-  
-    df$geneID <- genemap$ensembl_gene_id[idx]
-    df$symbol <- genemap$hgnc_symbol[idx]
-    df$gene_start <- genemap$start_position[idx]
-    df$gene_end <- genemap$end_position[idx]
-    df$description <- genemap$description[idx]
-    df$gene_length <- df$gene_end - tx2gene$gene_start + 1
-  
-  } else {
     
+    idx <- match(df$transcriptID, genemap$ensembl_transcript_id_version)
+    df <- merge(df, genemap[idx, c("ensembl_transcript_id_version", annotations)],
+                by.x = "transcriptID", by.y = "ensembl_transcript_id_version")
+    names(df) <- c("transcriptID", new_names)
+  } else {
     df <- data.frame(geneID = ensembl_ids)
     filename <- "gene_annotations"
     
-    # There are more annotations available in the biomaRt, check listAttributes(mart = ensembl)
-    genemap <- getBM(attributes = c("ensembl_gene_id",
-                                    "hgnc_symbol",
-                                    "start_position", "end_position",
-                                    "description"),
+    genemap <- getBM(attributes = annotations,
                      filters = "ensembl_gene_id",
                      values = df$geneID,
                      mart = ensembl)
     
     idx <- match(df$geneID, genemap$ensembl_gene_id)
-    
-    df$symbol <- genemap$hgnc_symbol[idx]
-    df$gene_start <- genemap$start_position[idx]
-    df$gene_end <- genemap$end_position[idx]
-    df$description <- genemap$description[idx]
-    df$gene_length <- df$gene_end - df$gene_start + 1
-    
+    df <- merge(df, genemap[idx, annotations], by.x = "geneID", by.y = "ensembl_gene_id")
+    names(df) <- new_names
   }
+  
+  df$gene_length <- df$gene_end - df$gene_start + 1
+  df <- df %>% relocate(gene_length, .before = "description")
   
   if(format == "xlsx"){
     require("openxlsx")
@@ -86,7 +77,5 @@ get_annotations <- function(ensembl_ids, mode = "genes", version = "", format = 
   } else {
     write.csv(df, rowNames = F, file = paste0(filename, ".csv"))
   }
-  
   return(df)
-
 }

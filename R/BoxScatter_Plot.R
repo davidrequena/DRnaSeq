@@ -50,7 +50,7 @@ BoxScatter_Plot <- function (object = NULL, variables = c(fill = "VarFill", shap
   # Plot
   p.bs <- ggplot(df.box, aes(x = sample_type, y = log2_gc)) +
     theme_bw() + geom_boxplot(width = 0.6, fill = "gray90") +
-    labs(title = paste0("Gene: ", symbol), # maybe add: " (", genename, ")"
+    labs(title = paste("Gene:", genename, symbol),
          x = expression("Sample Type"),
          y = expression("log"[2]*"(Normalized Gene Counts)")) +
     theme(plot.title = element_text(size = title_size["fig"]),
