@@ -41,7 +41,6 @@ get_annotations <- function(ensembl_ids, mode = "genes", version = "", format = 
   # The terms "go_id" and "name_1006" can be added in a future release.
   
   if(mode == "transcripts"){
-    ensembl_ids <- rownames(txi$counts)
     df <- data.frame(transcriptID = ensembl_ids)
     filename <- "tx2gene"
     
