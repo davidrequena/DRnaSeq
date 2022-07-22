@@ -33,8 +33,10 @@ BoxScatter_Plot <- function (object = NULL, variables = c(fill = "VarFill", shap
                              colors = NULL, shapes = NULL, markersize = NULL, alpha = 0.8,
                              width = NULL, height = NULL, jitter = 0.2, dpi = 150, save = FALSE,
                              title_size = c(axis = 20, fig = 24), label_size = c(x = 20, y = 16),
-                             legend_size = c(title = 14, elements = 12))
-{
+                             legend_size = c(title = 14, elements = 12)) {
+  
+  require("DESeq2")
+  
   # Extracting the vector of counts for that gene
   gene_counts <- counts(object, normalized = TRUE)[genename, ]
   log2_gc <- log2(gene_counts)
@@ -80,5 +82,4 @@ BoxScatter_Plot <- function (object = NULL, variables = c(fill = "VarFill", shap
     ggsave(paste0(symbol,".jpg"), plot = p.bs, width = width, height = height, dpi = dpi)
 
   } else { return(p.bs) }
-
 }
