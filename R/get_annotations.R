@@ -12,13 +12,13 @@
 #' @param ensembl_ids The column of transcripts to be used as input.
 #' @param mode To specify the IDs provided, between "transcripts" or "genes". Default = genes.
 #' @param version This function can use the version 103 or the current version of the Biomart. Default = Current.
-#' @param format The output will be a table named tx2gene in .csv or .xlsx formats. Default = csv.
+#' @param filename The name of the output file, which is table. Default = gene_annotations.
+#' @param format The output is saved in .csv or .xlsx formats. Default = csv.
 #' @export
 
-get_annotations <- function(ensembl_ids, mode = "genes", version = "", format = "csv") {
+get_annotations <- function(ensembl_ids, mode = "genes", filename = "gene_annotations", version = "", format = "csv") {
   
   require("biomaRt")
-  require("ensembldb")
   
   if(version == "103"){
     ensembl = useMart("ENSEMBL_MART_ENSEMBL",
@@ -41,8 +41,8 @@ get_annotations <- function(ensembl_ids, mode = "genes", version = "", format = 
   # The terms "go_id" and "name_1006" can be added in a future release.
   
   if(mode == "transcripts"){
+    
     df <- data.frame(transcriptID = ensembl_ids)
-    filename <- "tx2gene"
     
     genemap <- getBM(attributes = c("ensembl_transcript_id_version", annotations),
                      filters = "ensembl_transcript_id_version",
@@ -53,9 +53,10 @@ get_annotations <- function(ensembl_ids, mode = "genes", version = "", format = 
     df <- merge(df, genemap[idx, c("ensembl_transcript_id_version", annotations)],
                 by.x = "transcriptID", by.y = "ensembl_transcript_id_version")
     names(df) <- c("transcriptID", new_names)
+    
   } else {
+    
     df <- data.frame(geneID = ensembl_ids)
-    filename <- "gene_annotations"
     
     genemap <- getBM(attributes = annotations,
                      filters = "ensembl_gene_id",
@@ -65,6 +66,7 @@ get_annotations <- function(ensembl_ids, mode = "genes", version = "", format = 
     idx <- match(df$geneID, genemap$ensembl_gene_id)
     df <- merge(df, genemap[idx, annotations], by.x = "geneID", by.y = "ensembl_gene_id")
     names(df) <- new_names
+    
   }
   
   df$gene_length <- df$gene_end - df$gene_start + 1
