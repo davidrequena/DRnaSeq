@@ -1,4 +1,4 @@
-## davidrequena/drfun
+## davidrequena/DRnaSeq
 
 [David R Requena](https://scholar.google.com/citations?user=uI01iS4AAAAJ&hl=en)
 
