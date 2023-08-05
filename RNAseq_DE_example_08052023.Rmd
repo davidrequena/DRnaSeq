@@ -1,0 +1,527 @@
+---
+title: "Guide for the Differential Expression Analysis of RNA-seq data using DESeq2"
+author: "David Requena edited by Pierina Danos"
+date: "05-Ago-2023"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+# Guia para el Analisis de Expresión Diferencial para data de RNA-seq usando DESeq2  
+
+## 1. SET UP
+
+### Installar y llamar a las librerias 
+
+Este bloque va a instalar las dependencias necesarias. Si ya tiene las librerias, no corra este bloque:  
+
+```{r Install libraries, eval=TRUE, echo=FALSE}
+###############################
+#     Installar librerias     #
+###############################
+
+# install.packages("knitr", verbose = F)
+# install.packages("openxlsx", verbose = F)
+# install.packages('matrixStats', verbose = F)
+# install.packages('RColorBrewer', verbose = F)
+# install.packages('gplots', verbose = F)
+# install.packages('ggplot2', verbose = F)
+# install.packages('tsne', verbose = F)
+# install.packages('remotes', verbose = F)
+#install.packages("magrittr")
+# 
+#remotes::install_github(repo = 'davidrequena/drfun', force = TRUE)
+# 
+# install.packages("BiocManager")
+# BiocManager::install("DESeq2")
+# BiocManager::install("biomaRt")
+# BiocManager::install("pheatmap")
+
+
+```
+
+Este bloque es para llamar a todas las librerias necesarias:  
+```{r libraries, message=FALSE}
+############################
+#     Llamar librerias     #
+############################
+
+library("openxlsx", quietly = T)  
+library("biomaRt", quietly = T)
+library("RColorBrewer", quietly = T)
+library("gplots", quietly = T)
+library("ggplot2", quietly = T)
+library("pheatmap", quietly = T)
+library("tsne", quietly = T)
+library("matrixStats", quietly = T)
+library("ggrepel", quietly = T)
+library("DESeq2", quietly = T)
+library("DRnaSeq")
+library("magrittr")
+```
+
+Este bloque es para determinar el directorio de trabajo:
+```{r setup, include=FALSE}
+#Imprimir resultados en el documento generado  
+knitr::opts_chunk$set(echo = TRUE)
+
+#Establece el directorio raíz en el directorio actual  
+knitr::opts_knit$set(root.dir = "./")        # <<<---- *** WORKING DIRECTORY ***
+```
+
+Visualizar archivos .tsv descargados desde el paper
+```{r, echo=FALSE}
+ex_genecounts <- read.table(gzfile("GSE77466_matrix_table_raw_counts.tsv.gz"), header = TRUE, sep = "\t")
+
+ex_SRA_metadata <- read.table("GSE77466_metadata.tsv", header = TRUE, sep = "\t")
+```
+
+
+Este bloque es para cargar la metadata del estudio:
+```{r, echo=FALSE}
+#Crear objeto para la metadata
+sample_metadata_table<- "samples_metadata.xlsx"
+#Cargar la tabla excel en una variable
+sampledata <- data.frame(read.xlsx(sample_metadata_table),stringsAsFactors = TRUE)
+rownames(sampledata) <- sampledata$id
+#Defnir niveles del factor type  
+sampledata$type <- factor(sampledata$type, levels = c("NL","L"))
+```
+
+Este bloque es para cargar la "Tabla de conteo de genes"  del estudio:
+```{r, echo=FALSE}
+#Asignar el objeto
+gene_counts_table <- "gene_counts.xlsx"
+#Leer el archivo excel
+genecounts <- data.frame(read.xlsx(gene_counts_table, rowNames = T))
+#Dimensionar la tabla
+dim(genecounts)
+```
+
+#PPT: ¿Por que usar el identificador ENSG?
+
+Eliminar filas que no tienen conteo de genes
+```{r, echo=FALSE}
+genecounts <- genecounts[rowSums(genecounts) > 0,]
+#Dimensionar la tabla
+dim(genecounts)
+```
+# PPT: ¿Por que un gen tendria cero counts en un experimento?
+
+Graficar los conteos por muestra
+```{r, echo=FALSE}
+
+#Añadir columna con la suma de genes a la metadata
+sampledata$counts <- colSums(genecounts)
+
+# Crear vector de colores 
+nice_colors <- c("lightcyan", "lightyellow")
+
+
+# Generar un gráfico de barras usando "ggplot2"para los conteos de genes por muestra  
+
+p.counts <- ggplot(data = sampledata, aes(x = id, y = counts, fill = type)) + 
+            theme_bw() + 
+            theme(panel.grid.major.x = element_blank(), 
+            panel.grid.minor.y = element_blank()) +
+            geom_bar(stat="identity", color="black", size = 0.1) + 
+            scale_fill_manual(values = nice_colors) +
+            theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+            scale_y_continuous(expand = expansion(mult = c(0, .01)), labels = scales::comma) +
+            xlab("Sample ID") + ylab("Counts") + theme(axis.title=element_text(size=16))
+#Guardar el grafico
+ggsave("Plots/1_Counts_per_Sample.jpg", p.counts, width = 6, height = 4, dpi = 150)
+```
+
+Obtener las anotaciones: nombres de los transcriptos, los nombres de los genes y su descripción.
+```{r, echo=FALSE}
+#Cargar la tabla con las anotaciones
+tx2gene <- data.frame(read.xlsx("tx2gene_new.xlsx"))
+
+# Cargar las anotaciones que acompañaran a cada geneID  
+annotations <- c("symbol", "biotype", "chromosome", "gene_start", "gene_end", "gene_length", "description")
+
+#Crear dataframe con las anotaciones por geneID  
+geneID.details <- tx2gene[,c("geneID", annotations)]
+
+#Eliminar filas duplicadas de la columna "geneID" en el dataframe "geneID.details".
+geneID.details <- geneID.details[!duplicated(geneID.details), ]
+
+```
+
+Añadir las anotaciones a la tabla con los genecounts
+```{r, echo=FALSE}
+# Crear objeto a partir de la tabla de genecounts
+genecounts.annotations <- genecounts
+
+# Añadir las anotaciones 
+genecounts.annotations <- add_annotations(genecounts.annotations, geneID.details, variables = annotations)
+
+#Guardar la tabla
+write.xlsx(genecounts.annotations, file = "2_Raw_Gene_Counts_Annotated.xlsx", colNames = T, rowNames = F, append = F, overwrite = T)
+
+```
+
+#PPT: Filtrado de genes ribosomales
+
+Este bloque es para filtrar los conteos de genes utilizando una Blacklist.
+```{r, echo=FALSE}
+# Blacklists, genes a ser excluidos del analisis
+blacklist_allRibo <- data.frame(read.csv("blacklist_all-ribo.tsv", sep = "\t", header = TRUE))
+
+#Crear una datframe con los genes de la blacklist presentes en la muestra
+genecounts.allRibo <- genecounts[rownames(genecounts) %in% blacklist_allRibo[,1], ]
+
+#Añadir la suma de los counts de genes ribosomales a "sampledata".
+sampledata$Counts_allRibo <- colSums(genecounts.allRibo)
+```
+
+
+### DESeq2
+
+#PPT: Analisis de expresión diferencial con DESeq2
+
+```{r, echo=FALSE}
+################
+# DESeq Object #
+################
+
+# Crear un DESeqDataSet a partir de la metadata y los genecounts  
+
+ds.deseq <- DESeqDataSetFromMatrix(countData = genecounts, 
+                                    colData = sampledata, 
+                                    design = ~ type)#Factor
+
+# To see which is the current base level:
+str(colData(ds.deseq)$type)
+
+# Crear lista de genes para el analisis de expresion diferencial
+keep <- !(rownames(genecounts) %in% blacklist_allRibo[,1])
+
+#Actualizar el DESeq object 
+ds.deseq <- ds.deseq[keep, ]
+
+#Ten en cuenta que las cuantificaciones de lectura se redondean en DEseq, por lo que los recuentos de Salmon inferiores a 0.5 ahora son 0.
+
+#Nuevamente remover los genes que tienen cero counts
+ 
+nozero <- rowSums(counts(ds.deseq)) > 0
+
+ds.deseq <- ds.deseq[nozero, ]  
+```
+#[OPTIONAL] Obtener las gene counts normalizadas
+```{r, echo=FALSE}
+#Normalizar los counts
+ds.deseq <- estimateSizeFactors(ds.deseq)
+normalized.counts <- as.data.frame(counts(ds.deseq, normalized = TRUE))
+
+control <- sampledata$id[sampledata$type == "NL"]
+treatmnt <- sampledata$id[sampledata$type == "L"]
+  
+normalized.counts$Mean.control <- rowMeans(normalized.counts[,control])
+normalized.counts$Mean.treatmnt <- rowMeans(normalized.counts[,treatmnt])
+
+# Adding gene name and description
+normalized.counts.annotated <- add_annotations(normalized.counts, geneID.details, variables = annotations)
+
+#Guardar el archivo
+write.xlsx(normalized.counts.annotated, file = "3_Normalized_Gene_counts.xlsx", colNames = T, rowNames = F, append = F, overwrite = T)
+```
+
+Correr el analisis de expresion diferencial
+```{r, echo=FALSE}
+# Run DESeq
+ds.deseq <- DESeq(ds.deseq)
+
+#Ver resultados de los grupos
+resultsNames(ds.deseq)
+#Experimental vs Control
+#[1] "Intercept"    "type_L_vs_NL"
+
+#Definir el alpha
+cutoff_alpha <- 0.05
+
+#Definir el punto de corte para el fold-change
+cutoff_fold <- 1
+
+# Get results (see results help for info on this)
+res <- results(ds.deseq, name = "type_L_vs_NL",
+               altHypothesis="greaterAbs",
+               alpha = cutoff_alpha,
+               pAdjustMethod = "BH")
+
+#Resumen del resultado
+summary(res)
+
+# out of 34956 with nonzero total read count
+# adjusted p-value < 0.05
+# LFC > 0 (up)       : 732, 2.1%
+# LFC < 0 (down)     : 532, 1.5%
+# outliers [1]       : 100, 0.29%
+# low counts [2]     : 14910, 43%
+# (mean count < 4)
+# [1] see 'cooksCutoff' argument of ?results
+# [2] see 'independentFiltering' argument of ?results
+
+
+
+```
+
+
+#Generar la tabla de resultados
+```{r, echo=FALSE}
+# Add tcolumnas con el promedio de los counts normalizados.
+res_norm <- merge(as.data.frame(res), normalized.counts[, c("Mean.control", "Mean.treatmnt")], by = 0)
+row.names(res_norm) <- res_norm$Row.names
+res_norm$Row.names <- NULL
+
+#Añadir anotaciones a la tabla de resultados
+res.annotated <- add_annotations(res_norm, geneID.details, variables = annotations)
+save_results(res.annotated, "4_Results_L_vs_NL", l2fc = cutoff_fold)
+```
+
+#Graficos
+
+### Transformations of the Data
+To adjust by known effects
+```{r, echo=FALSE}
+######################################
+# Variance stabilized transformation #
+######################################
+transf.data <- varianceStabilizingTransformation(ds.deseq)
+head(assay(transf.data))
+```
+### HeatMap
+```{r, echo=FALSE}
+#using transf.data
+
+sampleDists <- dist(t(assay(transf.data)))
+sampleDistMatrix <- as.matrix(sampleDists)
+
+colnames(sampleDistMatrix) <- sampledata$id
+rownames(sampleDistMatrix) <- sampledata$type
+
+# Make heatmap based on the Distance matrix (uses all genes)
+
+jpeg("Plots/2_Heatmap_basic_all.jpg", width = 12, height = 12, units = "in", res = 300)
+heatmap.basic.1 <- heatmap.2(sampleDistMatrix, margins = c(6.4, 6.4), offsetRow = 0, offsetCol = 0,
+                           trace="none", revC = TRUE, key = FALSE)
+dev.off()
+
+```
+
+#PCA
+```{r, echo=FALSE}
+# Two shapes:
+nice_shapes = c(21, 22)
+
+# PC 1 vs 2
+pca12 <- nice_PCA(transf.data, PCs = c(1,2), ntop =  nrow(assay(transf.data)), returnData = FALSE,
+                  variables = c("type"),
+                  legend_names = c(fill = "Sample Type"),
+                  size = 8, alpha = 1, colors = nice_colors,
+                  legend_title = 12, legend_elements = 10, legend_pos = c(0.88, 0.85, "left"),
+                  labels = c(var = "id", size = 3))
+
+ggsave("Plots/3_PCA.png", pca12, width = 6, height = 5, dpi = 300)
+```
+
+#tSNE
+```{r, echo=FALSE}
+p.tSNE <- nice_tSNE(object = transf.data, seed = 0, perplexity = 3, max_iterations = 10000, returnData = FALSE,
+                    variables = c(fill = "type"),
+                    colors = nice_colors, size = 8, alpha = 0.9,
+                    legend_names = c(fill = "Sample Type"),
+                    legend_title = 10, legend_elements = 8, legend_pos = c(0.08, 0.87, "left"),
+                    labels = c(var = "id", size = 3))
+
+p.tSNE <- p.tSNE + theme(legend.position = c(0.08, 0.87))
+
+ggsave("Plots/4_tSNE.png", p.tSNE, width = 8, height = 6, dpi = 150)
+```
+### UMAP
+```{r, echo=FALSE}
+
+nice_shapes = c(21, 22)
+nice_colors <- c("lightcyan", "lightyellow")
+
+for (s in c(0:19)) {
+
+  umap.params = umap.defaults
+  umap.params$n_neighbors=3
+  umap.params$n_components=2
+  umap.params$n_epochs=20000
+  umap.params$random_state=s
+  umap.params$transform_state=s
+  umap.params$verbose=TRUE
+
+  umap_data <- umap(t(assay(transf.data)), config = umap.params, preserve.seed = TRUE)
+
+  df.umap <- data.frame(umap_data$layout) %>%
+    tibble::rownames_to_column("id") %>%
+    dplyr::inner_join(sampledata, by = "id")
+
+  p.umap <- ggplot(data = df.umap, aes(x = X1, y = X2, fill = type , shape = tissue)) +
+    geom_point(size = 10, alpha = 0.9) + coord_fixed() +  theme_bw() +
+    scale_shape_manual(values = nice_shapes, guide = guide_legend(override.aes = list(size = 7), keyheight = 1.7)) +
+    scale_fill_manual(values = nice_colors, guide = guide_legend(override.aes = aes(shape = 21, size = 9))) +
+    geom_text(aes(label = type), size = 3) +
+    geom_text_repel(aes(label = id), color = "black", cex = 3,
+                    min.segment.length = unit(2, "lines"), box.padding = unit(0.5, "lines")) +
+    theme(axis.text.x = element_blank(), axis.text.y = element_blank(), legend.position = c(0.94, 0.20),
+          legend.title = element_text(size=12), legend.text=element_text(size=10),
+          legend.background = element_rect(color = "black"), legend.box.just = "right") +
+    labs(fill = expression(underline("type")), shape = expression(underline("tissue")))
+
+  ggsave(paste0("Plots/5_UMAP_s", s, "_p10.png"), p.umap, width = 15.5, height = 12, dpi = 300)
+}
+```
+#To Display DEanalaysis results
+ 
+### Volcano Plot
+```{r, echo=FALSE}
+#New data frame for the volcano plot
+d.volcano <- data.frame(res.annotated)
+# To remove empty adjusted p-values
+d.volcano <- d.volcano[!is.na(d.volcano$padj), ]
+
+# Optional: To adapt some extrene values, to reduce the range of the volcano plot for posters
+#d.volcano <- d.volcano[(abs(d.volcano$log2FoldChange) < 8) & (-log10(d.volcano$padj) < 7.5), ]
+d.volcano$log2FoldChange[d.volcano$log2FoldChange > 8] <- 8
+d.volcano$log2FoldChange[d.volcano$log2FoldChange < -8] <- -8
+d.volcano$padj[d.volcano$padj < 10**-8] <- 10**-8
+d.volcano$padj[d.volcano$padj > 10**8] <- 10**8
+
+# To fill the "empty" labels
+d.volcano$symbol[is.na(d.volcano$symbol) | (d.volcano$symbol == "")] <- "NS"
+
+# Additional cut-offs. The script will only add labels to those data points
+# passing a "nice" cutoff, for a better visualization:
+ctf_nice <- cutoff_alpha / 500
+fld_nice <- cutoff_fold * 4
+
+# Different colors for the datapoints, according to their relevance:
+d.volcano$colors <- rep("other", nrow(d.volcano))
+d.volcano$colors[(abs(d.volcano$log2FoldChange) <= cutoff_fold) & (d.volcano$padj >= cutoff_alpha)] <- "worst"
+d.volcano$colors[(abs(d.volcano$log2FoldChange) <= cutoff_fold) & (d.volcano$padj <= cutoff_alpha)] <- "middle"
+d.volcano$colors[(d.volcano$log2FoldChange >= cutoff_fold) & (d.volcano$padj < cutoff_alpha)] <- "over"
+d.volcano$colors[(d.volcano$log2FoldChange <= -cutoff_fold) & (d.volcano$padj < cutoff_alpha)] <- "under"
+
+# To add labels just to a group of genes (passing the "nice" cut off),
+# it is necessary to set some conditions to select just that group:
+cond1 <- !( (abs(d.volcano$log2FoldChange) <= cutoff_fold) | (d.volcano$padj > cutoff_alpha) )
+cond2 <- !( (abs(d.volcano$log2FoldChange) <= fld_nice) & (d.volcano$padj > ctf_nice) )
+cond <- cond1 & cond2
+
+#############################################
+# Volcano Plot using ggplot2 and text repel #
+#############################################
+p.volcano <- ggplot() + theme_bw() +
+  # Plot limits:
+  scale_y_continuous(expand = c(0,0),
+                     limits = c(0, 8),
+                     breaks = seq(0, 8, by = 4),
+                     minor_breaks = seq(0, 8, by = 1)) +
+  scale_x_continuous(expand = c(0,0),
+                     limits = c(-8, 8),
+                     breaks = seq(-8, 8, by = 4),
+                     minor_breaks = seq(-8, 8, by = 1)) +
+  # Vertical lines and labels:
+  geom_vline(xintercept = c(-cutoff_fold, cutoff_fold), color = "red", alpha = 0.8, linetype = 2) +
+  geom_text(aes(x = -cutoff_fold - 0.75, y = 7.75,
+                label = paste("x =", -cutoff_fold)), color = "red") +
+  geom_text(aes(x = cutoff_fold + 0.75, y = 7.75,
+                label = paste("x =", cutoff_fold)), color = "red") +
+  # Horizontal line and label:
+  geom_hline(yintercept = -log10(cutoff_alpha), colour = "red", alpha = 0.8, linetype = 2) +
+  geom_text(aes(x = -7.75, y = -log10(cutoff_alpha) - 0.25,
+                label = paste("p =", cutoff_alpha)), color = "red") +
+  # Rectangles with colors:
+  geom_rect(aes(xmin = -fld_nice, xmax = fld_nice, ymin = 0, ymax = -log10(cutoff_alpha)),
+            fill="mistyrose", alpha = 0.4, inherit.aes = FALSE) +
+  geom_rect(aes(xmin = -cutoff_fold, xmax = cutoff_fold, ymin = 0, ymax = -log10(ctf_nice)),
+            fill="mistyrose", alpha = 0.4, inherit.aes = FALSE) +
+  geom_rect(aes(xmin = -fld_nice, xmax = -cutoff_fold, ymin = -log10(cutoff_alpha), ymax = -log10(ctf_nice)),
+            fill="lightgoldenrodyellow", alpha = 0.5, inherit.aes = FALSE) +
+  geom_rect(aes(xmin = cutoff_fold, xmax = fld_nice, ymin = -log10(cutoff_alpha), ymax = -log10(ctf_nice)),
+            fill="lightgoldenrodyellow", alpha = 0.5, inherit.aes = FALSE) +
+  # Datapoints, in different colors:
+  geom_point(data = d.volcano,
+             aes(x = d.volcano$log2FoldChange, y = -log10(d.volcano$padj), fill = d.volcano$colors),
+             size = 1.5, pch=21, color = "gray10", alpha = 0.7, show.legend = TRUE) +
+  # Legend
+  scale_fill_manual(name = "Relative expression",
+                     values = c("over" = "springgreen", "under" = "deepskyblue",
+                                "middle" = "yellow", "worst" = "firebrick1", "other" = "tan1"),
+                     breaks = c("over", "under"), labels = c("Overexpressed", "Underexpressed")) +
+  guides(fill = guide_legend(override.aes = list(size=8))) + theme(legend.position = c(0.90, 0.92)) +
+  # Labels for the datapoints selected:
+  geom_text_repel(aes(x = d.volcano$log2FoldChange[cond],
+                      y = -log10(d.volcano$padj[cond]),
+                      label = d.volcano$symbol[cond]),
+                  inherit.aes = FALSE, parse = FALSE, max.iter = 5000, color = "black", cex = 3,
+                  nudge_x = 0.2, nudge_y = 0.2, segment.alpha = 0.5, segment.size = 0.5,
+                  arrow = arrow(length = unit(0.005, "npc"), type = "closed"),
+                  box.padding = unit(0.1, "lines"), min.segment.length = unit(0.01, "lines")) +
+  # Axis labels:
+  labs(x = expression("log"[2]*"(Fold Change)"),
+       y = expression("-log"[10]*"(p adjusted)"),
+       title = "Lesión / Normal")
+
+p.volcano
+
+ggsave("Plots/6_VolcanoPlot.jpg", p.volcano, width = 16, height = 9, dpi = 300)
+
+```
+
+
+
+### HeatMap - Unsupervised clustering
+```{r, echo=FALSE}
+###########
+# HeatMap #
+###########
+
+# Using a different function, to cluster also by genes
+
+# Variance stabilized data:
+varst.data.1 <- getVarianceStabilizedData(ds.deseq)
+dim(varst.data.1)
+
+#This may take several minutes
+
+pheatmap(varst.data.1, cluster_rows = TRUE, show_rownames = FALSE,
+         annotation = data.frame(sampledata[, c(1,4)]),
+         filename = "Plots/7_HeatMap_genes_allb.jpg", width = 16, height = 20)
+
+```
+
+
+#Do clustering using only the DEgenes
+
+```{r, echo=FALSE}
+  
+#DEgenes_list
+
+res_de <- subset(res.annotated, log2FoldChange >= 3 | log2FoldChange < -3, )
+dim(res_de)
+res_de <- subset(res_de, padj < 0.05, )
+dim(res_de)
+
+#Guardar la tabla
+write.xlsx(res_de, file = "5_DEgenes_Annotated.xlsx", colNames = T, rowNames = F, append = F, overwrite = T)
+
+varst.data.res_de <- varst.data.1[rownames(varst.data.1) %in% res_de[,9], ]
+dim(varst.data.res_de)
+
+
+pheatmap(varst.data.res_de, cluster_rows = TRUE, show_rownames = FALSE,
+         annotation = data.frame(sampledata[, c(1,4)]),
+         filename = "Plots/8_HeatMap_genes_DE.png", width = 16, height = 20)
+
+pheatmap(varst.data.res_de, cluster_rows = TRUE, show_rownames = TRUE,
+         annotation = data.frame(sampledata[, c(1,4)]),
+         filename = "Plots/9_HeatMap_genes_DE.png", width = 12, height = 30)
+
+         
+```    
