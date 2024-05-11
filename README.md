@@ -3,10 +3,6 @@
 [David R Requena](https://scholar.google.com/citations?user=uI01iS4AAAAJ&hl=en)
 
 ORCID = 0000-0002-5968-1133
-
-[Pierina Danos](https://orcid.org/0000-0002-9093-4303)
-
-ORCID = 0000-0002-9093-4303
  
 ---
 
